@@ -1,0 +1,406 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Georgia, serif; background: #f8f7f4; min-height: 100vh; }
+.header { background: #121a3c; padding: 14px 28px 10px; border-bottom: 2px solid #c9ac58; display: flex; align-items: center; justify-content: space-between; }
+.header h1 { color: #fff; font-size: 14px; font-weight: bold; letter-spacing: 0.5px; }
+.header p { color: #c9ac58; font-size: 11px; margin-top: 2px; }
+.steps { display: flex; align-items: center; gap: 4px; }
+.step { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 2px solid #3a4880; background: #2a3460; color: #8899bb; }
+.step.active { background: #c9ac58; border-color: #c9ac58; color: #121a3c; }
+.step.done { background: #1d5c38; border-color: #1d5c38; color: #fff; }
+.connector { width: 14px; height: 1px; background: #3a4880; }
+.body { padding: 24px 28px; max-width: 960px; margin: 0 auto; }
+.card { background: #fff; border: 1px solid #dde1ec; border-radius: 6px; padding: 20px; margin-bottom: 18px; }
+.card-title { color: #121a3c; font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid #e8eaf2; padding-bottom: 8px; }
+.dropzone { border: 2px dashed #9ba8c9; border-radius: 6px; padding: 40px 20px; text-align: center; cursor: pointer; background: #f4f6fb; transition: all 0.15s; }
+.dropzone:hover, .dropzone.active { border-color: #c9ac58; background: #fefbf3; }
+.dropzone-icon { font-size: 36px; margin-bottom: 10px; }
+.dropzone h3 { color: #121a3c; font-size: 14px; }
+.dropzone p { color: #8899bb; font-size: 12px; margin-top: 6px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.stat { background: #f4f6fb; border: 1px solid #dde1ec; border-radius: 6px; padding: 14px; text-align: center; }
+.stat-num { font-size: 26px; font-weight: bold; color: #121a3c; display: block; }
+.stat-label { font-size: 11px; color: #6b7a9e; display: block; margin-top: 3px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.rep-header { display: grid; grid-template-columns: 1fr 55px 55px 55px 65px; gap: 6px; padding: 6px 10px; font-size: 10px; font-weight: bold; color: #8899bb; border-bottom: 2px solid #e8eaf2; }
+.rep-row { display: grid; grid-template-columns: 1fr 55px 55px 55px 65px; gap: 6px; padding: 7px 10px; font-size: 12px; border-bottom: 1px solid #f0f1f7; align-items: center; }
+.pct-tag { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+.sym-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px; }
+.sym-item { background: #f4f6fb; border: 1px solid #dde1ec; border-radius: 4px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: flex-start; }
+.sym-name { font-weight: bold; color: #121a3c; font-size: 12px; }
+.sym-analyst { font-size: 10px; color: #6b7a9e; margin-top: 2px; }
+.sym-analyst input { border: none; background: transparent; font-size: 10px; color: #6b7a9e; font-family: Georgia, serif; width: 70px; outline: none; padding: 0; }
+.sym-count { background: #121a3c22; color: #121a3c; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; white-space: nowrap; }
+.btn { background: #121a3c; color: #fff; border: none; border-radius: 4px; padding: 10px 20px; font-size: 13px; font-family: Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { opacity: 0.85; }
+.btn-gold { background: #c9ac58; color: #121a3c; border: none; border-radius: 4px; padding: 12px 32px; font-size: 15px; font-family: Georgia, serif; cursor: pointer; font-weight: bold; }
+.btn-gold:hover { opacity: 0.9; }
+.btn-small { background: #eef1f9; color: #121a3c; border: 1px solid #c5ccdf; border-radius: 4px; padding: 6px 14px; font-size: 11px; font-family: Georgia, serif; cursor: pointer; }
+.btn-small.active { background: #121a3c; color: #fff; }
+.progress-bar { height: 5px; background: #e8eaf2; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.progress-fill { height: 100%; background: #c9ac58; border-radius: 3px; transition: width 0.4s; }
+textarea { width: 100%; border: 1px solid #dde1ec; border-radius: 4px; padding: 10px; font-size: 12px; font-family: monospace; min-height: 140px; resize: vertical; color: #121a3c; background: #fafbfd; }
+.config-row { display: flex; gap: 14px; margin-bottom: 18px; align-items: flex-end; flex-wrap: wrap; }
+.config-row label { font-size: 10px; color: #8899bb; display: block; margin-bottom: 4px; font-weight: bold; letter-spacing: 0.5px; }
+.config-row input[type=text] { border: 1px solid #dde1ec; border-radius: 4px; padding: 7px 10px; font-size: 13px; color: #121a3c; font-family: Georgia, serif; width: 200px; }
+.error { background: #faeaea; border: 1px solid #e08080; border-radius: 4px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #7a2020; }
+.center { text-align: center; }
+.hint { font-size: 11px; color: #8899bb; margin-top: 8px; }
+#file-input { display: none; }
+.hidden { display: none; }
+.ta-center { text-align: center; }
+.empty-state { text-align: center; padding: 30px; color: #8899bb; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>B. RILEY SECURITIES — SALES REPORT AGENT</h1>
+    <p>Automated weekly &amp; monthly PDF generation</p>
+  </div>
+  <div class="steps" id="steps">
+    <div class="step active" id="step-1">1</div>
+    <div class="connector"></div>
+    <div class="step" id="step-2">2</div>
+    <div class="connector"></div>
+    <div class="step" id="step-3">3</div>
+    <div class="connector"></div>
+    <div class="step" id="step-4">4</div>
+  </div>
+</div>
+
+<div class="body">
+  <div id="error-box" class="error hidden"></div>
+  <input type="file" id="file-input" accept=".xlsx,.xls">
+
+  <!-- STEP 1: Upload -->
+  <div id="panel-upload">
+    <div class="card">
+      <div class="card-title">Upload raw sales data</div>
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+        <div class="dropzone-icon">📊</div>
+        <h3 id="dz-title">Drop your Excel file here or click to browse</h3>
+        <p>Accepts weekly or monthly raw sales data (.xlsx, .xls)</p>
+      </div>
+      <div id="parse-progress" class="hidden" style="margin-top:14px">
+        <div style="font-size:12px;color:#6b7a9e;margin-bottom:6px" id="parse-msg">Parsing...</div>
+        <div class="progress-bar"><div class="progress-fill" id="parse-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2+: Review -->
+  <div id="panel-review" class="hidden">
+    <div class="config-row">
+      <div>
+        <label>PERIOD LABEL</label>
+        <input type="text" id="period-label" value="March 2026">
+      </div>
+      <div>
+        <label>REPORT TYPE</label>
+        <div style="display:flex;gap:6px">
+          <button class="btn-small active" id="btn-weekly" onclick="setType('weekly')">Weekly</button>
+          <button class="btn-small" id="btn-monthly" onclick="setType('monthly')">Monthly</button>
+        </div>
+      </div>
+      <div style="margin-left:auto">
+        <button class="btn-small" onclick="reset()">↩ New file</button>
+      </div>
+    </div>
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Rep leaderboard</div>
+        <div class="rep-header">
+          <div>Rep</div><div class="ta-center">Total</div>
+          <div class="ta-center">Live</div><div class="ta-center">VM</div>
+          <div class="ta-center">Live%</div>
+        </div>
+        <div id="rep-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top symbols pitched</div>
+        <div class="sym-grid" id="sym-grid"></div>
+        <div style="font-size:10px;color:#8899bb;margin-top:10px">Click analyst name to edit before generating</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">AI-generated summary</div>
+        <button class="btn" id="gen-btn" onclick="generateSummary()">✦ Generate with Claude</button>
+      </div>
+      <div id="gen-progress" class="hidden" style="margin-bottom:10px">
+        <div style="font-size:12px;color:#6b7a9e;margin-bottom:6px" id="gen-msg">Generating...</div>
+        <div class="progress-bar"><div class="progress-fill" id="gen-bar" style="width:0%"></div></div>
+      </div>
+      <div id="summary-empty" class="empty-state">Click "Generate with Claude" to produce an AI summary of the period's activity</div>
+      <textarea id="summary-text" class="hidden" placeholder="AI summary will appear here..."></textarea>
+    </div>
+
+    <div id="pdf-section" class="hidden center" style="padding:10px 0 20px">
+      <button class="btn-gold" onclick="sendToPDF()">↗ Generate PDFs in Claude</button>
+      <div class="hint">Sends structured data to Claude below to generate both PDFs — S&T-safe and client feedback versions</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ANALYST_MAP = {
+  WIX:"Naved Khan",REAX:"Naved Khan",HNRG:"Nick Giles",URG:"Nick Giles",
+  CENX:"Nick Giles",AA:"Nick Giles",ALM:"Nick Giles",CNR:"Nick Giles",BTU:"Nick Giles",
+  ONTO:"Craig Ellis",SMTC:"Craig Ellis",SIMO:"Craig Ellis",FORM:"Craig Ellis",
+  CAMT:"Craig Ellis",AXTI:"Craig Ellis",DAVE:"Hal Goetsch",CAPR:"Madison El-Saadi",
+  FUBO:"Drew Crum",TTWO:"Drew Crum",NAT:"Liam Burke",LUNR:"Griffin Boss",
+  TGLS:"Rohit Seth",TREX:"Rohit Seth",CLYM:"Mayank Mamtani",LCTX:"Mayank Mamtani",
+  CYTK:"Mayank Mamtani",ZS:"Erik Suppiger",NTCT:"Erik Suppiger",
+  SRTA:"Yuan Zhu","BRE-AU":"Soundarya Srinivasan",
+};
+
+let statsData = null;
+let reportType = "weekly";
+let analystEdits = {};
+
+function setStep(n) {
+  for(let i=1;i<=4;i++){
+    const el = document.getElementById('step-'+i);
+    el.className = 'step' + (i<n?' done':i===n?' active':'');
+  }
+}
+
+function setType(t) {
+  reportType = t;
+  document.getElementById('btn-weekly').className = 'btn-small' + (t==='weekly'?' active':'');
+  document.getElementById('btn-monthly').className = 'btn-small' + (t==='monthly'?' active':'');
+}
+
+function reset() {
+  statsData = null; analystEdits = {};
+  document.getElementById('panel-upload').classList.remove('hidden');
+  document.getElementById('panel-review').classList.add('hidden');
+  document.getElementById('summary-text').value = '';
+  document.getElementById('summary-text').classList.add('hidden');
+  document.getElementById('summary-empty').classList.remove('hidden');
+  document.getElementById('pdf-section').classList.add('hidden');
+  document.getElementById('dz-title').textContent = 'Drop your Excel file here or click to browse';
+  document.getElementById('parse-progress').classList.add('hidden');
+  document.getElementById('gen-btn').textContent = '✦ Generate with Claude';
+  setStep(1);
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 6000);
+}
+
+// Drag and drop
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('active');
+  const f = e.dataTransfer.files[0];
+  if(f) handleFile(f);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  if(e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+  document.getElementById('dz-title').textContent = file.name;
+  document.getElementById('parse-progress').classList.remove('hidden');
+  setProgress('parse', 20, 'Parsing Excel file...');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+    setProgress('parse', 60, 'Analyzing contacts...');
+    const data = analyze(rows);
+    statsData = data;
+    const type = rows.length > 200 ? 'monthly' : 'weekly';
+    setType(type);
+    // Auto-detect period from filename
+    const m = file.name.match(/march|april|may|june|july|august|september|october|november|december/i);
+    if(m) document.getElementById('period-label').value = m[0].charAt(0).toUpperCase()+m[0].slice(1)+' 2026';
+    setProgress('parse', 100, 'Done');
+    renderReview(data);
+    document.getElementById('panel-upload').classList.add('hidden');
+    document.getElementById('panel-review').classList.remove('hidden');
+    setStep(2);
+  } catch(e) {
+    showError('Failed to parse file: ' + e.message);
+    document.getElementById('parse-progress').classList.add('hidden');
+  }
+}
+
+function setProgress(id, pct, msg) {
+  document.getElementById(id+'-bar').style.width = pct+'%';
+  if(msg) document.getElementById(id+'-msg').textContent = msg;
+}
+
+function analyze(rows) {
+  const reps = {}, syms = {}, feedback = [];
+  for(const row of rows) {
+    const rep = row['Assigned To']||'';
+    const stype = row['Status Type']||'';
+    const s = row['Symbols']||'';
+    const c = (row['Completor Comments']||'').trim();
+    if(rep) {
+      if(!reps[rep]) reps[rep]={total:0,live:0,vm:0,email:0};
+      reps[rep].total++;
+      if(stype==='Live') reps[rep].live++;
+      else if(stype==='Voice Mail') reps[rep].vm++;
+      else if(stype==='Sent E-Mail') reps[rep].email++;
+    }
+    if(s) s.split(',').map(x=>x.trim()).filter(Boolean).forEach(sym=>{ syms[sym]=(syms[sym]||0)+1; });
+    const kws=['said','agreed','interested','wants','buy','pass','inbound','flagged','pitched','look','thinks','owns','called'];
+    if(c && (c.length<350||kws.some(k=>c.toLowerCase().includes(k)))) {
+      feedback.push({rep,company:row['Company']||'',stype,syms:s,comment:c.slice(0,280)});
+    }
+  }
+  const repList = Object.entries(reps).map(([name,s])=>({name,...s,pct:Math.round(s.live/s.total*100)})).sort((a,b)=>b.total-a.total);
+  const allSyms = Object.entries(syms).sort((a,b)=>b[1]-a[1]);
+  const topSyms = allSyms.slice(0,20).map(([sym,count])=>({sym,count,analyst:ANALYST_MAP[sym]||''}));
+  return {repList,topSyms,allSyms,feedback,total:rows.length};
+}
+
+function liveColor(pct) {
+  if(pct>=75) return '#0f6e56';
+  if(pct>=45) return '#7a4509';
+  return '#992929';
+}
+
+function renderReview(data) {
+  // Stats cards
+  const statsEl = document.getElementById('stats-row');
+  const cards = [
+    {n:data.total.toLocaleString(), l:'Total Actions'},
+    {n:data.allSyms.length, l:'Stocks Pitched'},
+    {n:data.repList.length, l:'Active Reps'},
+    {n:data.repList.filter(r=>r.pct>=75).length, l:'Reps ≥75% Live'},
+  ];
+  statsEl.innerHTML = cards.map(c=>`<div class="stat"><span class="stat-num">${c.n}</span><span class="stat-label">${c.l}</span></div>`).join('');
+
+  // Reps
+  const repEl = document.getElementById('rep-list');
+  repEl.innerHTML = data.repList.map(r=>`
+    <div class="rep-row">
+      <div style="color:#121a3c">${r.name.split(',')[0]}</div>
+      <div style="text-align:center;font-weight:bold;color:#121a3c">${r.total}</div>
+      <div style="text-align:center;color:#4a6a3a">${r.live}</div>
+      <div style="text-align:center;color:#8899bb">${r.vm}</div>
+      <div style="text-align:center"><span class="pct-tag" style="background:${liveColor(r.pct)}22;color:${liveColor(r.pct)}">${r.pct}%</span></div>
+    </div>`).join('');
+
+  // Symbols
+  const symEl = document.getElementById('sym-grid');
+  symEl.innerHTML = data.topSyms.map(s=>`
+    <div class="sym-item">
+      <div>
+        <div class="sym-name">${s.sym}</div>
+        <div class="sym-analyst"><input id="analyst-${s.sym}" value="${s.analyst}" placeholder="Analyst" oninput="analystEdits['${s.sym}']=this.value"></div>
+      </div>
+      <span class="sym-count">${s.count}</span>
+    </div>`).join('');
+}
+
+async function generateSummary() {
+  if(!statsData) return;
+  document.getElementById('gen-btn').textContent = '↻ Regenerating...';
+  document.getElementById('gen-progress').classList.remove('hidden');
+  document.getElementById('summary-empty').classList.add('hidden');
+  document.getElementById('summary-text').classList.add('hidden');
+  setProgress('gen', 20, 'Sending to Claude...');
+  setStep(3);
+
+  const period = document.getElementById('period-label').value;
+  const topSymsText = statsData.topSyms.map(s=>`${s.sym} (${s.count} contacts${s.analyst?', analyst: '+s.analyst:''})`).join(', ');
+  const repText = statsData.repList.slice(0,8).map(r=>`${r.name.split(',')[0]}: ${r.total} contacts, ${r.live} live (${r.pct}%)`).join('; ');
+  const feedbackSample = statsData.feedback.slice(0,12).map(f=>`[${f.rep.split(',')[0]} | ${f.company} | ${f.syms}] ${f.comment}`).join('\n');
+
+  const prompt = `You are an institutional equity sales analyst at B. Riley Securities writing a ${reportType} activity report for ${period}.
+
+Raw data:
+- Total contacts: ${statsData.total}
+- Top reps: ${repText}
+- Top symbols: ${topSymsText}
+
+Sample client notes:
+${feedbackSample}
+
+Write a concise ${reportType} sales activity summary with:
+1. 4-bullet executive summary (bold key phrases, punchy, institutional tone)
+2. For the top 5-6 symbols: a 3-4 sentence blurb on the call thesis and client reaction — NO client names
+3. Two or three analysis observations about what drove activity this period
+
+No client names anywhere. Format clearly with headers.`;
+
+  try {
+    setProgress('gen', 40, 'Claude is writing...');
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.map(c=>c.text||'').join('') || '';
+    setProgress('gen', 100, 'Done');
+    document.getElementById('summary-text').value = text;
+    document.getElementById('summary-text').classList.remove('hidden');
+    document.getElementById('gen-progress').classList.add('hidden');
+    document.getElementById('pdf-section').classList.remove('hidden');
+    document.getElementById('gen-btn').textContent = '↻ Regenerate';
+    setStep(4);
+  } catch(e) {
+    showError('Claude API error: ' + e.message);
+    document.getElementById('gen-btn').textContent = '✦ Generate with Claude';
+    document.getElementById('gen-progress').classList.add('hidden');
+    document.getElementById('summary-empty').classList.remove('hidden');
+  }
+}
+
+function sendToPDF() {
+  if(!statsData) return;
+  const period = document.getElementById('period-label').value;
+  const summary = document.getElementById('summary-text').value;
+  const repRows = statsData.repList.map(r=>`${r.name}|${r.total}|${r.live}|${r.vm}|${r.email}|${r.pct}%`).join('\n');
+  const symRows = statsData.topSyms.map(s=>`${s.sym}|${s.count}|${analystEdits[s.sym]||s.analyst||'TBD'}`).join('\n');
+
+  const msg = `Please generate the ${reportType} BRS sales activity PDF for ${period} using the following data.
+
+REPORT TYPE: ${reportType}
+PERIOD: ${period}
+TOTAL ACTIONS: ${statsData.total}
+
+REP STATS (Name|Total|Live|VM|Email|Live%):
+${repRows}
+
+TOP SYMBOLS (Symbol|Contacts|Analyst):
+${symRows}
+
+AI SUMMARY:
+${summary}
+
+Please build the PDF using our standard BRS template — navy/gold branding, Paragraph-based cells to prevent overflow, full-width table headers. Generate both the S&T-safe version and the client feedback version as separate files.`;
+
+  sendPrompt(msg);
+}
+</script>
+</body>
+</html>
